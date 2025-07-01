@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mei Portal</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: url('ocean.jpg') no-repeat center center fixed;
+      background-size: cover;
+      position: relative;
+      min-height: 100vh;
+      opacity: 0;
+      transition: opacity 1s ease;
+      overflow-x: hidden;
+    }
+    body.loaded {
+      opacity: 1;
+    }
+    h1 {
+      font-family: 'Dancing Script', cursive;
+      text-align: center;
+      color: white;
+      font-size: 3rem;
+      margin-bottom: 30px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .section {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 1s ease;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .section.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    h2 {
+      color: #333;
+      margin-top: 0;
+    }
+    .item {
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .item img {
+      width: 32px;
+      height: 32px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+    .memo-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    input, textarea {
+      width: 100%;
+      margin-top: 5px;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      background-color: #0099ff;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    button:hover {
+      background-color: #007acc;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    .cloud {
+      position: fixed;
+      top: 30px;
+      width: 200px;
+      height: 120px;
+      background: url('https://i.imgur.com/6n7X8Q6.png') no-repeat;
+      background-size: contain;
+      opacity: 0.6;
+      animation: moveClouds 60s linear infinite;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .cloud:nth-child(1) {
+      left: -220px;
+      animation-delay: 0s;
+    }
+    .cloud:nth-child(2) {
+      left: -320px;
+      width: 150px;
+      height: 90px;
+      top: 80px;
+      animation-delay: 30s;
+    }
+    @keyframes moveClouds {
+      0% { left: -220px; }
+      100% { left: 100vw; }
+    }
+    .wave {
+      position: fixed;
+      bottom: 0;
+      width: 200%;
+      height: 120px;
+      background: url('https://i.imgur.com/Pl0CrMo.png') repeat-x;
+      background-size: contain;
+      opacity: 0.5;
+      animation: waveMove 12s ease-in-out infinite alternate;
+      pointer-events: none;
+      z-index: 3;
+    }
+    @keyframes waveMove {
+      0% { background-position-x: 0; }
+      100% { background-position-x: 1000px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cloud"></div>
+  <div class="cloud"></div>
+  <div class="wave"></div>
+
+  <h1>Mei Portal</h1>
+
+  <div class="section">
+    <h2>Links</h2>
+    <div id="link-list"></div>
+    <input type="file" id="link-image" accept="image/*" />
+    <input type="text" id="link-name" placeholder="Name" />
+    <input type="text" id="link-url" placeholder="https://example.com" />
+    <button onclick="addLink()">Add</button>
+  </div>
+
+  <div class="section">
+    <h2>Deadline Countdown</h2>
+    <div id="deadline-list"></div>
+    <input type="text" id="deadline-title" placeholder="Deadline Title" />
+    <input type="date" id="deadline-date" />
+    <button onclick="addDeadline()">Add</button>
+  </div>
+
+  <div class="section">
+    <h2>Memo</h2>
+    <textarea id="memo" rows="4" placeholder="Write freely here"></textarea>
+    <button onclick="saveMemo()">Save</button>
+    <button onclick="clearMemoHistory()" style="background-color:#ff5555;">Clear All History</button>
+    <h3>History</h3>
+    <div id="memo-history"></div>
+  </div>
+
+  <script>
+    // Fade-in effect
+    window.addEventListener("load", () => {
+      document.body.classList.add("loaded");
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.add('show');
+      });
+    });
+
+    // Links
+    const linkList = document.getElementById("link-list");
+    function renderLinks() {
+      const links = JSON.parse(localStorage.getItem("links") || "[]");
+      linkList.innerHTML = "";
+      links.forEach((link, index) => {
+        linkList.innerHTML += `
+          <div class="item">
+            <img src="${link.img || 'https://via.placeholder.com/32'}" alt="icon" />
+            <a href="${link.url}" target="_blank" rel="noopener noreferrer">${link.name}</a>
+            <button onclick="deleteLink(${index})">Delete</button>
+          </div>`;
+      });
+    }
+    function addLink() {
+      const name = document.getElementById("link-name").value.trim();
+      const url = document.getElementById("link-url").value.trim();
+      const fileInput = document.getElementById("link-image");
+      if (name && url) {
+        const reader = new FileReader();
+        if (fileInput.files[0]) {
+          reader.onload = function(e) {
+            saveLink(name, url, e.target.result);
+          }
+          reader.readAsDataURL(fileInput.files[0]);
+        } else {
+          saveLink(name, url, "");
+        }
+      }
+    }
+    function saveLink(name, url, img) {
+      const links = JSON.parse(localStorage.getItem("links") || "[]");
+      links.push({name, url, img});
+      localStorage.setItem("links", JSON.stringify(links));
+      renderLinks();
+      document.getElementById("link-name").value = "";
+      document.getElementById("link-url").value = "";
+      document.getElementById("link-image").value = "";
+    }
+    function deleteLink(index) {
+      const links = JSON.parse(localStorage.getItem("links") || "[]");
+      links.splice(index, 1);
+      localStorage.setItem("links", JSON.stringify(links));
+      renderLinks();
+    }
+    renderLinks();
+
+    // Deadlines
+    const deadlineList = document.getElementById("deadline-list");
+    function renderDeadlines() {
+      const deadlines = JSON.parse(localStorage.getItem("deadlines") || "[]");
+      deadlineList.innerHTML = "";
+      const today = new Date();
+      deadlines.forEach((d, index) => {
+        const deadlineDate = new Date(d.date);
+        const diff = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+        let text;
+        if (diff > 0) {
+          text = `${d.title} - ${diff} day(s) left`;
+        } else if (diff === 0) {
+          text = `${d.title} is due today!`;
+        } else {
+          text = `${d.title} - expired`;
+        }
+        deadlineList.innerHTML += `
+          <div class="item">
+            ${text}
+            <button onclick="deleteDeadline(${index})">Delete</button>
+          </div>`;
+      });
+    }
+    function addDeadline() {
+      const title = document.getElementById("deadline-title").value.trim();
+      const date = document.getElementById("deadline-date").value;
+      if (title && date) {
+        const deadlines = JSON.parse(localStorage.getItem("deadlines") || "[]");
+        deadlines.push({title, date});
+        localStorage.setItem("deadlines", JSON.stringify(deadlines));
+        renderDeadlines();
+        document.getElementById("deadline-title").value = "";
+        document.getElementById("deadline-date").value = "";
+      }
+    }
+    function deleteDeadline(index) {
+      const deadlines = JSON.parse(localStorage.getItem("deadlines") || "[]");
+      deadlines.splice(index, 1);
+      localStorage.setItem("deadlines", JSON.stringify(deadlines));
+      renderDeadlines();
+    }
+    renderDeadlines();
+
+    // Memo History
+    const memo = document.getElementById("memo");
+    const memoHistory = document.getElementById("memo-history");
+    function renderMemoHistory() {
+      const history = JSON.parse(localStorage.getItem("memoHistory") || "[]");
+      memoHistory.innerHTML = "";
+      history.forEach((m, idx) => {
+        const div = document.createElement("div");
+        div.className = "memo-item";
+        const span = document.createElement("span");
+        span.textContent = m;
+        const btn = document.createElement("button");
+        btn.textContent = "Delete";
+        btn.addEventListener("click", () => {
+          deleteMemo(idx);
+        });
+        div.appendChild(span);
+        div.appendChild(btn);
+        memoHistory.appendChild(div);
+      });
+    }
+    function deleteMemo(index) {
+      const history = JSON.parse(localStorage.getItem("memoHistory") || "[]");
+      history.splice(index, 1);
+      localStorage.setItem("memoHistory", JSON.stringify(history));
+      renderMemoHistory();
+    }
+    function saveMemo() {
+      const text = memo.value.trim();
+      if (text) {
+        const now = new Date();
+        function zeroPad(num) {
+          return num.toString().padStart(2, '0');
+        }
+        const timestamp = `${now.getFullYear()}/${zeroPad(now.getMonth() + 1)}/${zeroPad(now.getDate())} ${zeroPad(now.getHours())}:${zeroPad(now.getMinutes())}`;
+        const history = JSON.parse(localStorage.getItem("memoHistory") || "[]");
+        history.push(`${timestamp} : ${text}`);
+        localStorage.setItem("memoHistory", JSON.stringify(history));
+        renderMemoHistory();
+        alert("Saved!");
+        memo.value = "";
+      }
+    }
+    function clearMemoHistory() {
+      if (confirm("Are you sure you want to clear all history?")) {
+        localStorage.removeItem("memoHistory");
+        renderMemoHistory();
+        alert("All history cleared!");
+      }
+    }
+    renderMemoHistory();
+  </script>
+</body>
+</html>
